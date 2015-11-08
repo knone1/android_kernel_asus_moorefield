@@ -38,7 +38,7 @@ else
 fi
 
 if [ -z "$KBUILD_BUILD_TIMESTAMP" ]; then
-	TIMESTAMP=`date`
+	TIMESTAMP=`date +%T`
 else
 	TIMESTAMP=$KBUILD_BUILD_TIMESTAMP
 fi
@@ -53,6 +53,7 @@ else
 	LINUX_COMPILE_HOST=$KBUILD_BUILD_HOST
 fi
 
+
 UTS_VERSION="#$VERSION"
 CONFIG_FLAGS=""
 if [ -n "$SMP" ] ; then CONFIG_FLAGS="SMP"; fi
@@ -62,7 +63,7 @@ UTS_VERSION="$UTS_VERSION $CONFIG_FLAGS $TIMESTAMP"
 # Truncate to maximum length
 
 UTS_LEN=64
-UTS_TRUNCATE="cut -b -$UTS_LEN"
+UTS_TRUNCATE="sed -e s/\(.\{1,$UTS_LEN\}\).*/\1/"
 
 # Generate a temporary compile.h
 
