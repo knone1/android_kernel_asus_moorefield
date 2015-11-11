@@ -30,6 +30,9 @@ static struct led_info asus_led_leds[] = {
 	{
 		.name = "green",
 	},
+	{
+		.name = "blue",
+	},
 };
 static struct led_platform_data asus_led_pdata = {
 	.num_leds = ARRAY_SIZE(asus_led_leds),

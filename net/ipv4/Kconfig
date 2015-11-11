@@ -448,7 +448,7 @@ if TCP_CONG_ADVANCED
 
 config TCP_CONG_BIC
 	tristate "Binary Increase Congestion (BIC) control"
-	default y
+	default m
 	---help---
 	BIC-TCP is a sender-side only change that ensures a linear RTT
 	fairness under large windows while offering both scalability and
@@ -470,7 +470,7 @@ config TCP_CONG_CUBIC
 
 config TCP_CONG_WESTWOOD
 	tristate "TCP Westwood+"
-	default y
+	default m
 	---help---
 	TCP Westwood+ is a sender-side only modification of the TCP Reno
 	protocol stack that optimizes the performance of TCP congestion
@@ -484,7 +484,7 @@ config TCP_CONG_WESTWOOD
 
 config TCP_CONG_HTCP
         tristate "H-TCP"
-        default y
+        default m
 	---help---
 	H-TCP is a send-side only modifications of the TCP Reno
 	protocol stack that optimizes the performance of TCP
@@ -577,6 +577,22 @@ config TCP_CONG_ILLINOIS
 	For further details see:
 	  http://www.ews.uiuc.edu/~shaoliu/tcpillinois/index.html
 
+config TCP_CONG_CDG
+	tristate "CAIA Delay-Gradient (CDG)"
+	default n
+	---help---
+	CAIA Delay-Gradient (CDG) is a TCP congestion control that modifies
+	the TCP sender in order to:
+
+	  o Use the delay gradient as a congestion signal.
+	  o Back off with an average probability that is independent of the RTT.
+	  o Coexist with flows that use loss-based congestion control.
+	  o Tolerate packet loss unrelated to congestion.
+
+	For further details see:
+	  D.A. Hayes and G. Armitage. "Revisiting TCP congestion control using
+	  delay gradients." In Networking 2011. Preprint: http://goo.gl/No3vdg
+
 choice
 	prompt "Default TCP congestion control"
 	default DEFAULT_CUBIC
@@ -605,6 +621,9 @@ choice
 	config DEFAULT_WESTWOOD
 		bool "Westwood" if TCP_CONG_WESTWOOD=y
 
+	config DEFAULT_CDG
+		bool "CDG" if TCP_CONG_CDG=y
+
 	config DEFAULT_RENO
 		bool "Reno"
 
@@ -627,6 +646,7 @@ config DEFAULT_TCP_CONG
 	default "westwood" if DEFAULT_WESTWOOD
 	default "veno" if DEFAULT_VENO
 	default "reno" if DEFAULT_RENO
+	default "cdg" if DEFAULT_CDG
 	default "cubic"
 
 config TCP_MD5SIG

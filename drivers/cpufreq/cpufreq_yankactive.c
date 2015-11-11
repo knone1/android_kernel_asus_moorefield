@@ -1521,7 +1521,9 @@ static int cpufreq_governor_yankactive(struct cpufreq_policy *policy,
 	return 0;
 }
 
-
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_yankactive
+static
+#endif
 struct cpufreq_governor cpufreq_gov_yankactive = {
 	.name = "yankactive",
 	.governor = cpufreq_governor_yankactive,

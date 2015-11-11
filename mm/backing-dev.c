@@ -287,13 +287,19 @@ int bdi_has_dirty_io(struct backing_dev_info *bdi)
  * Note, we wouldn't bother setting up the timer, but this function is on the
  * fast-path (used by '__mark_inode_dirty()'), so we save few context switches
  * by delaying the wake-up.
+ *
+ * We have to be careful not to postpone flush work if it is scheduled for
+ * earlier. Thus we use queue_delayed_work().
  */
 void bdi_wakeup_thread_delayed(struct backing_dev_info *bdi)
 {
 	unsigned long timeout;
 
 	timeout = msecs_to_jiffies(dirty_writeback_interval * 10);
-	mod_delayed_work(bdi_wq, &bdi->wb.dwork, timeout);
+	spin_lock_bh(&bdi->wb_lock);
+	if (test_bit(BDI_registered, &bdi->state))
+		queue_delayed_work(bdi_wq, &bdi->wb.dwork, timeout);
+	spin_unlock_bh(&bdi->wb_lock);
 }
 
 /*
@@ -306,9 +312,6 @@ static void bdi_remove_from_list(struct backing_dev_info *bdi)
 	spin_unlock_bh(&bdi_lock);
 
 	synchronize_rcu_expedited();
-
-	/* bdi_list is now unused, clear it to mark @bdi dying */
-	INIT_LIST_HEAD(&bdi->bdi_list);
 }
 
 int bdi_register(struct backing_dev_info *bdi, struct device *parent,
@@ -358,6 +361,11 @@ static void bdi_wb_shutdown(struct backing_dev_info *bdi)
 	 * Make sure nobody finds us on the bdi_list anymore
 	 */
 	bdi_remove_from_list(bdi);
+
+	/* Make sure nobody queues further work */
+	spin_lock_bh(&bdi->wb_lock);
+	clear_bit(BDI_registered, &bdi->state);
+	spin_unlock_bh(&bdi->wb_lock);
 
 	/*
 	 * Drain work list and shutdown the delayed_work.  At this point,
@@ -592,19 +600,6 @@ long congestion_wait(int sync, long timeout)
 }
 EXPORT_SYMBOL(congestion_wait);
 
-long congestion_wait_kswapd(int sync, long timeout)
-{
-	long ret;
-	DEFINE_WAIT(wait);
-	wait_queue_head_t *wqh = &congestion_wqh[sync];
-
-	prepare_to_wait(wqh, &wait, TASK_UNINTERRUPTIBLE);
-	ret = schedule_timeout(timeout);
-	finish_wait(wqh, &wait);
-
-	return ret;
-}
-EXPORT_SYMBOL(congestion_wait_kswapd);
 /**
  * wait_iff_congested - Conditionally wait for a backing_dev to become uncongested or a zone to complete writes
  * @zone: A zone to check if it is heavily congested

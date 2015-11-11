@@ -262,9 +262,6 @@ static void intr_complete (struct urb *urb)
 		break;
 	}
 
-	if (!netif_running (dev->net))
-		return;
-
 	status = usb_submit_urb (urb, GFP_ATOMIC);
 	if (status != 0)
 		netif_err(dev, timer, dev->net,
@@ -507,19 +504,7 @@ static int rx_submit (struct usbnet *dev, struct urb *urb, gfp_t flags)
 	}
 
 	skb = __netdev_alloc_skb_ip_align(dev->net, size, flags);
-        if (!skb) { //recursively to reduce the required size to the half of assgiend one to avoid allocation fail
-                size = size / 2;
-                skb = __netdev_alloc_skb_ip_align(dev->net, size, flags);
-                if (!skb) {
-                        size = size / 2;
-                        skb = __netdev_alloc_skb_ip_align(dev->net, size, flags);
-                        if (!skb) {
-                                size = size / 2;
-                                skb = __netdev_alloc_skb_ip_align(dev->net, size, flags);
-                        }
-                }
-        }
-        if (!skb) {
+	if (!skb) {
 		netif_dbg(dev, rx_err, dev->net, "no rx skb\n");
 		usbnet_defer_kevent (dev, EVENT_RX_MEMORY);
 		usb_free_urb (urb);
@@ -868,7 +853,8 @@ int usbnet_stop (struct net_device *net)
 {
 	struct usbnet		*dev = netdev_priv(net);
 	struct driver_info	*info = dev->driver_info;
-	int			retval;
+	//int			retval;
+	int			retval, mpn;
 #ifdef WAIT_NET_CARRIER_EVENT_WHEN_CLOSE
 	struct cdc_ncm_ctx *ctx;
 	ctx = (struct cdc_ncm_ctx *)dev->data[0];
@@ -908,6 +894,8 @@ int usbnet_stop (struct net_device *net)
 
 	usbnet_purge_paused_rxq(dev);
 
+	mpn = !test_and_clear_bit(EVENT_NO_RUNTIME_PM, &dev->flags);
+
 	/* deferred work (task, timer, softirq) must also stop.
 	 * can't flush_scheduled_work() until we drop rtnl (later),
 	 * else workers could deadlock; so make workers a NOP.
@@ -915,8 +903,9 @@ int usbnet_stop (struct net_device *net)
 	dev->flags = 0;
 	del_timer_sync (&dev->delay);
 	tasklet_kill (&dev->bh);
-	if (info->manage_power &&
-	    !test_and_clear_bit(EVENT_NO_RUNTIME_PM, &dev->flags))
+	//if (info->manage_power &&
+	    //!test_and_clear_bit(EVENT_NO_RUNTIME_PM, &dev->flags))
+	if (info->manage_power && mpn)
 		info->manage_power(dev, 0);
 	else
 		usb_autopm_put_interface(dev->intf);

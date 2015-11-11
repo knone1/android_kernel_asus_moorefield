@@ -107,6 +107,7 @@ struct cpufreq_policy {
 	unsigned int		policy; /* see above */
 	struct cpufreq_governor	*governor; /* see below */
 	void			*governor_data;
+	bool			governor_enabled; /* governor start/stop flag */
 
 	struct work_struct	update; /* if update_policy() needs to be
 					 * called, but you're in IRQ context */
@@ -115,8 +116,6 @@ struct cpufreq_policy {
 
 	struct kobject		kobj;
 	struct completion	kobj_unregister;
-
-	unsigned int util;
 };
 
 #define CPUFREQ_ADJUST			(0)
@@ -283,9 +282,6 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver_data);
 void cpufreq_notify_transition(struct cpufreq_policy *policy,
 		struct cpufreq_freqs *freqs, unsigned int state);
 
-void cpufreq_notify_utilization(struct cpufreq_policy *policy,
-		unsigned int load);
-
 static inline void cpufreq_verify_within_limits(struct cpufreq_policy *policy, unsigned int min, unsigned int max)
 {
 	if (policy->min < min)
@@ -360,7 +356,6 @@ static inline unsigned int cpufreq_get(unsigned int cpu)
 #ifdef CONFIG_CPU_FREQ
 unsigned int cpufreq_quick_get(unsigned int cpu);
 unsigned int cpufreq_quick_get_max(unsigned int cpu);
-unsigned int cpufreq_quick_get_util(unsigned int cpu);
 #else
 static inline unsigned int cpufreq_quick_get(unsigned int cpu)
 {
@@ -399,9 +394,15 @@ extern struct cpufreq_governor cpufreq_gov_ondemand;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_CONSERVATIVE)
 extern struct cpufreq_governor cpufreq_gov_conservative;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_conservative)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_LAGFREE)
+extern struct cpufreq_governor cpufreq_gov_lagfree;
+#define CPUFREQ_DEFAULT_GOVERNOR        (&cpufreq_gov_lagfree)
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE)
 extern struct cpufreq_governor cpufreq_gov_interactive;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_interactive)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_WHEATLEY)
+extern struct cpufreq_governor cpufreq_gov_wheatley;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_wheatley)
 #endif
 
 

@@ -81,7 +81,7 @@ static ssize_t show_time_in_state(struct cpufreq_policy *policy, char *buf)
 	for (i = 0; i < stat->state_num; i++) {
 		len += sprintf(buf + len, "%u %llu\n", stat->freq_table[i],
 			(unsigned long long)
-			cputime64_to_clock_t(stat->time_in_state[i]));
+			jiffies_64_to_clock_t(stat->time_in_state[i]));
 	}
 	return len;
 }
@@ -272,9 +272,6 @@ static void cpufreq_stats_update_policy_cpu(struct cpufreq_policy *policy)
 {
 	struct cpufreq_stats *stat = per_cpu(cpufreq_stats_table,
 			policy->last_cpu);
-
-	if (!stat)
-		return;
 
 	pr_debug("Updating stats_table for new_cpu %u from last_cpu %u\n",
 			policy->cpu, policy->last_cpu);

@@ -110,8 +110,8 @@ enum dhd_op_flags {
 #define MAX_CNTL_RX_TIMEOUT 1
 #endif /* MAX_CNTL_RX_TIMEOUT */
 
-#define DHD_SCAN_ASSOC_ACTIVE_TIME	30 /* ms: Embedded default Active setting from DHD */
-#define DHD_SCAN_UNASSOC_ACTIVE_TIME 60 /* ms: Embedded def. Unassoc Active setting from DHD */
+#define DHD_SCAN_ASSOC_ACTIVE_TIME	40 /* ms: Embedded default Active setting from DHD */
+#define DHD_SCAN_UNASSOC_ACTIVE_TIME 80 /* ms: Embedded def. Unassoc Active setting from DHD */
 #define DHD_SCAN_PASSIVE_TIME		130 /* ms: Embedded default Passive setting from DHD */
 
 #ifndef POWERUP_MAX_RETRY
@@ -519,7 +519,7 @@ inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
 
 #define DHD_OS_WD_WAKE_LOCK(pub)		dhd_os_wd_wake_lock(pub)
 #define DHD_OS_WD_WAKE_UNLOCK(pub)		dhd_os_wd_wake_unlock(pub)
-#define DHD_PACKET_TIMEOUT_MS	200
+#define DHD_PACKET_TIMEOUT_MS	500
 #define DHD_EVENT_TIMEOUT_MS	1500
 
 

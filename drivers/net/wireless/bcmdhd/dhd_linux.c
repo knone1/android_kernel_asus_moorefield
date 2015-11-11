@@ -67,9 +67,6 @@
 #include <dhd_dbg.h>
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
-#include <linux/moduleparam.h>
-static int wakelock_timeout = 1;
-module_param(wakelock_timeout, int, 0755);
 #endif
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
@@ -112,11 +109,6 @@ module_param(wakelock_timeout, int, 0755);
 #include <linux/pm_qos.h>
 #endif
 #include <linux/cpufreq.h>
-
-#include <linux/HWVersion.h>
-extern int Read_PROJ_ID(void);
-#define ZX551ML_NV_PATH "/system/etc/wifi/bcmdhd_zx551ml.cal"
-
 //100Mbit/s = 100*1024*1024 bit/s = 104857600 bit/s = 13107200 byte/s
 //30Mbit/s = 30*1024*1024 bit/s = 31457280 bit/s = 3932160 byte/s
 //20Mbit/s = 20*1024*1024 bit/s = 20971520 bit/s = 2621440 byte/s
@@ -165,11 +157,11 @@ inline static void tput_set_performance_mode(bool en)
 	else
 		pm_qos_update_request(&tput_pm_qos_req, PM_QOS_DEFAULT_VALUE);
 #endif
-	if(en)
+/*	if(en)
 		boost_mode = 2;
 	else
 		boost_mode = 0;
-	set_cpufreq_boost(boost_mode);
+	set_cpufreq_boost(boost_mode);*/
 }
 
 static int tput_monitor_thread(void *num)
@@ -4900,17 +4892,12 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 	if (dhdinfo->fw_path[0] == '\0') {
 		if (adapter && adapter->fw_path && adapter->fw_path[0] != '\0')
 			fw = adapter->fw_path;
+
 	}
 	if (dhdinfo->nv_path[0] == '\0') {
 		if (adapter && adapter->nv_path && adapter->nv_path[0] != '\0')
-            nv = adapter->nv_path;
+			nv = adapter->nv_path;
 	}
-
-    // Change nvram path by project ID
-    if (Read_PROJ_ID() == PROJ_ID_ZX550ML) {
-        DHD_ERROR(("Project ZX550ML series, change nv path to %s\n", ZX551ML_NV_PATH));
-        nv = ZX551ML_NV_PATH;
-    }
 
 	/* Use module parameter if it is valid, EVEN IF the path has not been initialized
 	 *
@@ -8271,10 +8258,10 @@ int dhd_os_wake_lock_timeout(dhd_pub_t *pub)
 #ifdef CONFIG_HAS_WAKELOCK
 		if (dhd->wakelock_rx_timeout_enable)
 			wake_lock_timeout(&dhd->wl_rxwake,
-				msecs_to_jiffies(dhd->wakelock_rx_timeout_enable)/4);
+				msecs_to_jiffies(dhd->wakelock_rx_timeout_enable));
 		if (dhd->wakelock_ctrl_timeout_enable)
 			wake_lock_timeout(&dhd->wl_ctrlwake,
-				msecs_to_jiffies(dhd->wakelock_ctrl_timeout_enable)/4);
+				msecs_to_jiffies(dhd->wakelock_ctrl_timeout_enable));
 #endif
 		dhd->wakelock_rx_timeout_enable = 0;
 		dhd->wakelock_ctrl_timeout_enable = 0;

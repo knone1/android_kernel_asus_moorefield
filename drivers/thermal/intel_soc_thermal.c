@@ -74,7 +74,6 @@
 #define PKG_TURBO_POWER_LIMIT	0x610
 #define PKG_TURBO_CFG		0x670
 #define MSR_THERM_CFG1		0x673
-#define MSR_THERM_CFG2		0x674
 
 /* PKG_TURBO_PL1 holds PL1 in terms of 32mW */
 #define PL_UNIT_MW		32
@@ -277,12 +276,6 @@ static void enable_soc_dts(void)
 
 	/* Set the Hysteresis value */
 	wrmsr_on_cpu(0, MSR_THERM_CFG1, eax, edx);
-
-	/* Enable CPU DTS averaging, set TM2 timeout */
-	rdmsr_on_cpu(0, MSR_THERM_CFG2, &eax, &edx);
-	eax &= ~0x2;
-	eax |= 9 << 12;
-	wrmsr_on_cpu(0, MSR_THERM_CFG2, eax, edx);
 
 	/* Enable the DTS */
 	write_soc_reg(DTS_ENABLE_REG, DTS_ENABLE);

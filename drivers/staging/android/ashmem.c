@@ -368,7 +368,6 @@ static int ashmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		loff_t start = range->pgstart * PAGE_SIZE;
 		loff_t end = (range->pgend + 1) * PAGE_SIZE;
 
-		//allow always
 		do_fallocate(range->asma->file,
 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
 				start, end - start);
