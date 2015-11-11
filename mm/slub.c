@@ -877,7 +877,7 @@ static int on_freelist(struct kmem_cache *s, struct page *page, void *search)
 				object_err(s, page, object,
 					"Freechain corrupt");
 				set_freepointer(s, object, NULL);
-				break;
+				
 			} else {
 				slab_err(s, page, "Freepointer corrupt");
 				page->freelist = NULL;
@@ -932,6 +932,17 @@ static void trace(struct kmem_cache *s, struct page *page, void *object,
  * Hooks for other subsystems that check memory allocations. In a typical
  * production configuration these hooks all should produce no code at all.
  */
+
+static inline void kmalloc_large_node_hook(void *ptr, size_t size, gfp_t flags)
+{
+	kmemleak_alloc(ptr, size, 1, flags);
+}
+
+static inline void kfree_hook(const void *x)
+{
+	kmemleak_free(x);
+}
+
 static inline int slab_pre_alloc_hook(struct kmem_cache *s, gfp_t flags)
 {
 	flags &= gfp_allowed_mask;
@@ -1259,11 +1270,25 @@ static inline void inc_slabs_node(struct kmem_cache *s, int node,
 static inline void dec_slabs_node(struct kmem_cache *s, int node,
 							int objects) {}
 
+static inline void kmalloc_large_node_hook(void *ptr, size_t size, gfp_t flags)
+{
+	kmemleak_alloc(ptr, size, 1, flags);
+}
+
+static inline void kfree_hook(const void *x)
+{
+	kmemleak_free(x);
+}
+
 static inline int slab_pre_alloc_hook(struct kmem_cache *s, gfp_t flags)
 							{ return 0; }
 
 static inline void slab_post_alloc_hook(struct kmem_cache *s, gfp_t flags,
-		void *object) {}
+		void *object)
+{
+	kmemleak_alloc_recursive(object, s->object_size, 1, s->flags,
+		flags & gfp_allowed_mask);
+}
 
 static inline void slab_free_hook(struct kmem_cache *s, void *x) {}
 
@@ -2079,12 +2104,19 @@ static inline int node_match(struct page *page, int node)
 #endif
 	return 1;
 }
-
+#ifdef CONFIG_SLUB_DEBUG
 static int count_free(struct page *page)
 {
 	return page->objects - page->inuse;
 }
 
+static inline unsigned long node_nr_objs(struct kmem_cache_node *n)
+{
+	return atomic_long_read(&n->total_objects);
+}
+#endif /* CONFIG_SLUB_DEBUG */
+
+#if defined(CONFIG_SLUB_DEBUG) || defined(CONFIG_SYSFS)
 static unsigned long count_partial(struct kmem_cache_node *n,
 					int (*get_count)(struct page *))
 {
@@ -2099,19 +2131,18 @@ static unsigned long count_partial(struct kmem_cache_node *n,
 	return x;
 }
 
-static inline unsigned long node_nr_objs(struct kmem_cache_node *n)
-{
-#ifdef CONFIG_SLUB_DEBUG
-	return atomic_long_read(&n->total_objects);
-#else
-	return 0;
-#endif
-}
+#endif /* CONFIG_SLUB_DEBUG || CONFIG_SYSFS */
 
 static noinline void
 slab_out_of_memory(struct kmem_cache *s, gfp_t gfpflags, int nid)
 {
+#ifdef CONFIG_SLUB_DEBUG
+	static DEFINE_RATELIMIT_STATE(slub_oom_rs, DEFAULT_RATELIMIT_INTERVAL,
+				      DEFAULT_RATELIMIT_BURST);
 	int node;
+
+	if ((gfpflags & __GFP_NOWARN) || !__ratelimit(&slub_oom_rs))
+		return;
 
 	printk(KERN_WARNING
 		"SLUB: Unable to allocate memory on node %d (gfp=0x%x)\n",
@@ -2141,6 +2172,7 @@ slab_out_of_memory(struct kmem_cache *s, gfp_t gfpflags, int nid)
 			"  node %d: slabs: %ld, objs: %ld, free: %ld\n",
 			node, nr_slabs, nr_objs, nr_free);
 	}
+#endif
 }
 
 static inline void *new_slab_objects(struct kmem_cache *s, gfp_t flags,
@@ -2326,9 +2358,10 @@ new_slab:
 	freelist = new_slab_objects(s, gfpflags, node, &c);
 
 	if (unlikely(!freelist)) {
-		if (!(gfpflags & __GFP_NOWARN) && printk_ratelimit())
-			slab_out_of_memory(s, gfpflags, node);
+		//if (!(gfpflags & __GFP_NOWARN) && printk_ratelimit())
+		//	slab_out_of_memory(s, gfpflags, node);
 
+		slab_out_of_memory(s, gfpflags, node);
 		local_irq_restore(flags);
 		return NULL;
 	}
@@ -2396,7 +2429,7 @@ redo:
 
 	object = c->freelist;
 	page = c->page;
-	if (unlikely(!object || !page || !node_match(page, node)))
+	if (unlikely(!object || node_match(page, node)))
 		object = __slab_alloc(s, gfpflags, node, addr, c);
 
 	else {
@@ -3289,7 +3322,7 @@ static void *kmalloc_large_node(size_t size, gfp_t flags, int node)
 	if (page)
 		ptr = page_address(page);
 
-	kmemleak_alloc(ptr, size, 1, flags);
+	kmalloc_large_node_hook(ptr, size, flags);
 	return ptr;
 }
 
@@ -3389,7 +3422,7 @@ void kfree(const void *x)
 	page = virt_to_head_page(x);
 	if (unlikely(!PageSlab(page))) {
 		BUG_ON(!PageCompound(page));
-		kmemleak_free(x);
+		kfree_hook(x);
 		__free_memcg_kmem_pages(page, compound_order(page));
 		return;
 	}
@@ -3779,9 +3812,9 @@ int __kmem_cache_create(struct kmem_cache *s, unsigned long flags)
 		return 0;
 
 	memcg_propagate_slab_attrs(s);
-	mutex_unlock(&slab_mutex);
+	//mutex_unlock(&slab_mutex);
 	err = sysfs_slab_add(s);
-	mutex_lock(&slab_mutex);
+	//mutex_lock(&slab_mutex);
 
 	if (err)
 		kmem_cache_close(s);
@@ -4520,7 +4553,7 @@ SLAB_ATTR_RO(ctor);
 
 static ssize_t aliases_show(struct kmem_cache *s, char *buf)
 {
-	return sprintf(buf, "%d\n", s->refcount - 1);
+	return sprintf(buf, "%d\n", s->refcount < 0 ? 0 : s->refcount - 1);
 }
 SLAB_ATTR_RO(aliases);
 
