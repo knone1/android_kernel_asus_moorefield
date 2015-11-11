@@ -4,7 +4,7 @@
 
 config INTEL_MID_GPS
 	tristate "Intel MID GPS driver"
-	default n
+	default y
 	help
 	  Select this driver to enable kernel interface for GPS devices
 	  used in Intel MID platforms.
