@@ -15,6 +15,7 @@
 #include <linux/hrtimer.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/notifier.h>
 #include <linux/smp.h>
 
 #include "tick-internal.h"
@@ -22,6 +23,10 @@
 /* The registered clock event devices */
 static LIST_HEAD(clockevent_devices);
 static LIST_HEAD(clockevents_released);
+
+/* Notification for clock events */
+static RAW_NOTIFIER_HEAD(clockevents_chain);
+
 /* Protection for the above */
 static DEFINE_RAW_SPINLOCK(clockevents_lock);
 
@@ -138,8 +143,7 @@ static int clockevents_increase_min_delta(struct clock_event_device *dev)
 {
 	/* Nothing to do if we already reached the limit */
 	if (dev->min_delta_ns >= MIN_DELTA_LIMIT) {
-		printk_deferred(KERN_WARNING
-				"CE: Reprogramming failure. Giving up\n");
+		printk(KERN_WARNING "CE: Reprogramming failure. Giving up\n");
 		dev->next_event.tv64 = KTIME_MAX;
 		return -ETIME;
 	}
@@ -152,10 +156,9 @@ static int clockevents_increase_min_delta(struct clock_event_device *dev)
 	if (dev->min_delta_ns > MIN_DELTA_LIMIT)
 		dev->min_delta_ns = MIN_DELTA_LIMIT;
 
-	printk_deferred(KERN_WARNING
-			"CE: %s increased min_delta_ns to %llu nsec\n",
-			dev->name ? dev->name : "?",
-			(unsigned long long) dev->min_delta_ns);
+	printk(KERN_WARNING "CE: %s increased min_delta_ns to %llu nsec\n",
+	       dev->name ? dev->name : "?",
+	       (unsigned long long) dev->min_delta_ns);
 	return 0;
 }
 
@@ -264,6 +267,30 @@ int clockevents_program_event(struct clock_event_device *dev, ktime_t expires,
 	return (rc && force) ? clockevents_program_min_delta(dev) : rc;
 }
 
+/**
+ * clockevents_register_notifier - register a clock events change listener
+ */
+int clockevents_register_notifier(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret;
+
+	raw_spin_lock_irqsave(&clockevents_lock, flags);
+	ret = raw_notifier_chain_register(&clockevents_chain, nb);
+	raw_spin_unlock_irqrestore(&clockevents_lock, flags);
+
+	return ret;
+}
+
+/*
+ * Notify about a clock event change. Called with clockevents_lock
+ * held.
+ */
+static void clockevents_do_notify(unsigned long reason, void *dev)
+{
+	raw_notifier_call_chain(&clockevents_chain, reason, dev);
+}
+
 /*
  * Called after a notify add to make devices available which were
  * released from the notifier call.
@@ -277,7 +304,7 @@ static void clockevents_notify_released(void)
 				 struct clock_event_device, list);
 		list_del(&dev->list);
 		list_add(&dev->list, &clockevent_devices);
-		tick_check_new_device(dev);
+		clockevents_do_notify(CLOCK_EVT_NOTIFY_ADD, dev);
 	}
 }
 
@@ -298,7 +325,7 @@ void clockevents_register_device(struct clock_event_device *dev)
 	raw_spin_lock_irqsave(&clockevents_lock, flags);
 
 	list_add(&dev->list, &clockevent_devices);
-	tick_check_new_device(dev);
+	clockevents_do_notify(CLOCK_EVT_NOTIFY_ADD, dev);
 	clockevents_notify_released();
 
 	raw_spin_unlock_irqrestore(&clockevents_lock, flags);
@@ -394,7 +421,6 @@ void clockevents_exchange_device(struct clock_event_device *old,
 	 * released list and do a notify add later.
 	 */
 	if (old) {
-		module_put(old->owner);
 		clockevents_set_mode(old, CLOCK_EVT_MODE_UNUSED);
 		list_del(&old->list);
 		list_add(&old->list, &clockevents_released);
@@ -442,7 +468,7 @@ void clockevents_notify(unsigned long reason, void *arg)
 	int cpu;
 
 	raw_spin_lock_irqsave(&clockevents_lock, flags);
-	tick_notify(reason, arg);
+	clockevents_do_notify(reason, arg);
 
 	switch (reason) {
 	case CLOCK_EVT_NOTIFY_CPU_DEAD:

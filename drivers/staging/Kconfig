@@ -74,17 +74,11 @@ source "drivers/staging/sep54/Kconfig"
 
 source "drivers/staging/iio/Kconfig"
 
-source "drivers/staging/zsmalloc/Kconfig"
-
-source "drivers/staging/zram/Kconfig"
-
 source "drivers/staging/wlags49_h2/Kconfig"
 
 source "drivers/staging/wlags49_h25/Kconfig"
 
 source "drivers/staging/sm7xxfb/Kconfig"
-
-source "drivers/staging/frandom/Kconfig"
 
 source "drivers/staging/crystalhd/Kconfig"
 
@@ -147,7 +141,5 @@ source "drivers/staging/dwc2/Kconfig"
 source "drivers/staging/npk/Kconfig"
 
 source "drivers/staging/sventx/Kconfig"
-
-source "drivers/staging/vnswap/Kconfig"
 
 endif # STAGING
