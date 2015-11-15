@@ -276,11 +276,6 @@ unsigned long shrink_slab(struct shrink_control *shrink,
 		long batch_size = shrinker->batch ? shrinker->batch
 						  : SHRINK_BATCH;
 
-		long min_cache_size = batch_size;
-
-		if (current_is_kswapd())
-			min_cache_size = 0;
-
 		max_pass = do_shrinker_shrink(shrinker, shrink, 0);
 		if (max_pass <= 0)
 			continue;
@@ -331,11 +326,8 @@ unsigned long shrink_slab(struct shrink_control *shrink,
 					nr_pages_scanned, lru_pages,
 					max_pass, delta, total_scan);
 
-		while (total_scan > min_cache_size) {
+		while (total_scan >= batch_size) {
 			int nr_before;
-
-			if (total_scan < batch_size)
-				batch_size = total_scan;
 
 			nr_before = do_shrinker_shrink(shrinker, shrink, 0);
 			shrink_ret = do_shrinker_shrink(shrinker, shrink,
@@ -1342,8 +1334,7 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	struct zone_reclaim_stat *reclaim_stat = &lruvec->reclaim_stat;
 
 	while (unlikely(too_many_isolated(zone, file, sc))) {
-		//congestion_wait(BLK_RW_ASYNC, HZ/10);
-		congestion_wait_kswapd(BLK_RW_ASYNC, HZ/10);
+		congestion_wait(BLK_RW_ASYNC, HZ/10);
 
 		/* We are about to die and free our memory. Return now. */
 		if (fatal_signal_pending(current))

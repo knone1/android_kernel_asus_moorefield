@@ -12,7 +12,6 @@
 #include <linux/swap.h>
 #include <linux/swapops.h>
 
-#include <linux/vmacache.h>
 #include <asm/elf.h>
 #include <asm/uaccess.h>
 #include <asm/tlbflush.h>

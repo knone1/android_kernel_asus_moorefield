@@ -600,15 +600,9 @@ void *memcpy(void *dest, const void *src, size_t count)
 {
 	char *tmp = dest;
 	const char *s = src;
-	//unsigned long dstp = (unsigned long)dest; 
-	//unsigned long srcp = (unsigned long)src; 
 
 	while (count--)
 		*tmp++ = *s++;
-
-	/* Copy from the beginning to the end */ 
-	//mem_copy_fwd(dstp, srcp, count);
-
 	return dest;
 }
 EXPORT_SYMBOL(memcpy);
@@ -623,7 +617,6 @@ EXPORT_SYMBOL(memcpy);
  *
  * Unlike memcpy(), memmove() copes with overlapping areas.
  */
-
 void *memmove(void *dest, const void *src, size_t count)
 {
 	char *tmp;
@@ -644,6 +637,7 @@ void *memmove(void *dest, const void *src, size_t count)
 	}
 	return dest;
 }
+EXPORT_SYMBOL(memmove);
 #endif
 
 #ifndef __HAVE_ARCH_MEMCMP

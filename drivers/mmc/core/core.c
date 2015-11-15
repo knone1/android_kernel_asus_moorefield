@@ -65,7 +65,7 @@ static const unsigned freqs[] = { 400000, 300000, 200000, 100000 };
  * performance cost, and for other reasons may not always be desired.
  * So we allow it it to be disabled.
  */
-bool use_spi_crc = 0;
+bool use_spi_crc = 1;
 module_param(use_spi_crc, bool, 0);
 
 /*
@@ -866,9 +866,9 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 			 * previous value of 300ms is known to be
 			 * insufficient for some cards.
 			 */
-			limit_us = 1500000;
+			limit_us = 3000000;
 		else
-			limit_us = 500000;
+			limit_us = 100000;
 
 		/*
 		 * SDHC cards always use these fixed values.

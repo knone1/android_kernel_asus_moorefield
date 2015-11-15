@@ -46,8 +46,6 @@ static DEFINE_PER_CPU(struct cpufreq_policy *, cpufreq_cpu_data_fallback);
 #ifdef CONFIG_HOTPLUG_CPU
 /* This one keeps track of the previously set governor of a removed CPU */
 static DEFINE_PER_CPU(char[CPUFREQ_NAME_LEN], cpufreq_cpu_governor);
-static int last_min = -1;
-static int last_max = -1;
 #endif
 static DEFINE_RWLOCK(cpufreq_driver_lock);
 
@@ -318,19 +316,6 @@ void cpufreq_notify_transition(struct cpufreq_policy *policy,
 EXPORT_SYMBOL_GPL(cpufreq_notify_transition);
 
 
-/**
- * cpufreq_notify_utilization - notify CPU userspace about CPU utilization
- * change
- *
- * This function is called everytime the CPU load is evaluated by the
- * ondemand governor. It notifies userspace of cpu load changes via sysfs.
- */
-void cpufreq_notify_utilization(struct cpufreq_policy *policy,
-		unsigned int util)
-{
-	if (policy)
-		policy->util = util;
-}
 
 /*********************************************************************
  *                          SYSFS INTERFACE                          *
@@ -346,27 +331,6 @@ static struct cpufreq_governor *__find_governor(const char *str_governor)
 
 	return NULL;
 }
-
-/**
- * cpufreq_quick_get_util - get the CPU utilization from policy->util
- * @cpu: CPU number
- *
- * This is the last known util, without actually getting it from the driver.
- * Return value will be same as what is shown in util in sysfs.
- */
-unsigned int cpufreq_quick_get_util(unsigned int cpu)
-{
-	struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
-	unsigned int ret_util = 0;
-
-	if (policy) {
-		ret_util = policy->util;
-		cpufreq_cpu_put(policy);
-	}
-
-	return ret_util;
-}
-EXPORT_SYMBOL(cpufreq_quick_get_util);
 
 /**
  * cpufreq_parse_governor - parse a governor string
@@ -433,8 +397,8 @@ static ssize_t show_##file_name				\
 	return sprintf(buf, "%u\n", policy->object);	\
 }
 
-show_one(cpuinfo_min_freq, min);
-show_one(cpuinfo_max_freq, min);
+show_one(cpuinfo_min_freq, cpuinfo.min_freq);
+show_one(cpuinfo_max_freq, cpuinfo.max_freq);
 show_one(cpuinfo_transition_latency, cpuinfo.transition_latency);
 show_one(scaling_min_freq, min);
 show_one(scaling_max_freq, max);
@@ -1030,12 +994,6 @@ static int __cpufreq_add_dev(struct device *dev, struct subsys_interface *sif,
 	 */
 	cpumask_and(policy->cpus, policy->cpus, cpu_online_mask);
 
-	if (last_min > -1)
-		policy->min = last_min;
-	
-	if (last_max > -1)
-		policy->max = last_max;
-
 	policy->user_policy.min = policy->min;
 	policy->user_policy.max = policy->max;
 
@@ -1275,8 +1233,6 @@ static int __cpufreq_remove_dev(struct device *dev,
 					__cpufreq_governor(data, CPUFREQ_GOV_POLICY_EXIT);
 
 				lock_policy_rwsem_read(cpu);
-				last_min = data->min;
-				last_max = data->max;
 				kobj = &data->kobj;
 				cmp = &data->kobj_unregister;
 				unlock_policy_rwsem_read(cpu);
@@ -1939,8 +1895,7 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	memcpy(&policy->cpuinfo, &data->cpuinfo,
 				sizeof(struct cpufreq_cpuinfo));
 
-	if (policy->min > data->user_policy.max
-		|| policy->max < data->user_policy.min) {
+	if (policy->min > data->max || policy->max < data->min) {
 		ret = -EINVAL;
 		goto error_out;
 	}

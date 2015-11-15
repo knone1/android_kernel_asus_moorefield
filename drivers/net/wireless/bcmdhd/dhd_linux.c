@@ -67,9 +67,6 @@
 #include <dhd_dbg.h>
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
-#include <linux/moduleparam.h>
-static int wakelock_timeout = 1;
-module_param(wakelock_timeout, int, 0755);
 #endif
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
@@ -8271,10 +8268,10 @@ int dhd_os_wake_lock_timeout(dhd_pub_t *pub)
 #ifdef CONFIG_HAS_WAKELOCK
 		if (dhd->wakelock_rx_timeout_enable)
 			wake_lock_timeout(&dhd->wl_rxwake,
-				msecs_to_jiffies(dhd->wakelock_rx_timeout_enable)/4);
+				msecs_to_jiffies(dhd->wakelock_rx_timeout_enable));
 		if (dhd->wakelock_ctrl_timeout_enable)
 			wake_lock_timeout(&dhd->wl_ctrlwake,
-				msecs_to_jiffies(dhd->wakelock_ctrl_timeout_enable)/4);
+				msecs_to_jiffies(dhd->wakelock_ctrl_timeout_enable));
 #endif
 		dhd->wakelock_rx_timeout_enable = 0;
 		dhd->wakelock_ctrl_timeout_enable = 0;

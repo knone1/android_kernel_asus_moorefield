@@ -64,7 +64,6 @@
 #endif
 
 #ifdef FTS_GESTURE
-//static bool dozing = false;
 //zax 20140922
 #define KEY_GESTURE_DOUBLECLICK 256
 //#define  KEY_GESTURE_U	KEY_U
@@ -73,14 +72,14 @@
 //#define  KEY_GESTURE_LEFT	KEY_LEFT 
 //#define  KEY_GESTURE_RIGHT	KEY_RIGHT
 //#define  KEY_GESTURE_O	KEY_O
-#define  KEY_GESTURE_E		258//KEY_F21//KEY_E
-#define  KEY_GESTURE_C		257//KEY_F20//KEY_C
+#define  KEY_GESTURE_E		258
+#define  KEY_GESTURE_C		257
 //#define  KEY_GESTURE_M	KEY_M 
 //#define  KEY_GESTURE_L	KEY_L
-#define  KEY_GESTURE_W		261//KEY_F23//KEY_W
-#define  KEY_GESTURE_S		259//KEY_F22//KEY_S 
-#define  KEY_GESTURE_V		260//KEY_F18//KEY_V
-#define  KEY_GESTURE_Z		262//KEY_F19//KEY_Z
+#define  KEY_GESTURE_W		261
+#define  KEY_GESTURE_S		259
+#define  KEY_GESTURE_V		260
+#define  KEY_GESTURE_Z		262
 
 //#define GESTURE_LEFT		0x20
 //#define GESTURE_RIGHT		0x21
@@ -346,7 +345,6 @@ static void check_gesture(struct ftxxxx_ts_data *data,int gesture_id)
 		//	break;
 		case GESTURE_W:
 			if ((gesture_mode & 0x40) && (gesture_mode & 0x20)) {
-				//dozing = true;
 				input_report_key(data->input_dev, KEY_GESTURE_W, 1);
 				input_sync(data->input_dev);
 				input_report_key(data->input_dev, KEY_GESTURE_W, 0);
@@ -361,7 +359,6 @@ static void check_gesture(struct ftxxxx_ts_data *data,int gesture_id)
 		//	break;
 		case GESTURE_E:
 			if ((gesture_mode & 0x40) && (gesture_mode & 0x08)) {
-				//dozing = true;
 				input_report_key(data->input_dev, KEY_GESTURE_E, 1);
 				input_sync(data->input_dev);
 				input_report_key(data->input_dev, KEY_GESTURE_E, 0);
@@ -376,7 +373,6 @@ static void check_gesture(struct ftxxxx_ts_data *data,int gesture_id)
 		//	break;
 		case GESTURE_S:
 			if ((gesture_mode & 0x40) && (gesture_mode & 0x10)) {
-				//dozing = true;
 				input_report_key(data->input_dev, KEY_GESTURE_S, 1);
 				input_sync(data->input_dev);
 				input_report_key(data->input_dev, KEY_GESTURE_S, 0);
@@ -385,7 +381,6 @@ static void check_gesture(struct ftxxxx_ts_data *data,int gesture_id)
 			break;
 		case GESTURE_V:
 			if ((gesture_mode & 0x40) && (gesture_mode & 0x01)) {
-				//dozing = true;
 				input_report_key(data->input_dev, KEY_GESTURE_V, 1);
 				input_sync(data->input_dev);
 				input_report_key(data->input_dev, KEY_GESTURE_V, 0);
@@ -394,7 +389,6 @@ static void check_gesture(struct ftxxxx_ts_data *data,int gesture_id)
 			break;
 		case GESTURE_Z:
 			if ((gesture_mode & 0x40) && (gesture_mode & 0x02)) {
-			
 				input_report_key(data->input_dev, KEY_GESTURE_Z, 1);
 				input_sync(data->input_dev);
 				input_report_key(data->input_dev, KEY_GESTURE_Z, 0);
@@ -403,7 +397,6 @@ static void check_gesture(struct ftxxxx_ts_data *data,int gesture_id)
 			break;
 		case GESTURE_C:
 			if ((gesture_mode & 0x40) && (gesture_mode & 0x04)) {
-				
 				input_report_key(data->input_dev, KEY_GESTURE_C, 1);
 				input_sync(data->input_dev);
 				input_report_key(data->input_dev, KEY_GESTURE_C, 0);
@@ -422,7 +415,7 @@ static int fts_read_Gesturedata(struct ftxxxx_ts_data *data)
 	int i = 0;
 	buf[0] = 0xd3;
 	int gesture_id = 0;
-	//dozing = false;
+
 	pointnum = 0;
 
 	ret = ftxxxx_i2c_Read(data->client, buf, 1, buf, FTS_GESTURE_POINTS_HEADER);

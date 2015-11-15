@@ -46,8 +46,8 @@
  * (to see the precise effective timeslice length of your workload,
  *  run vmstat and monitor the context-switches (cs) field)
  */
-unsigned int sysctl_sched_latency = 20000000ULL;
-unsigned int normalized_sysctl_sched_latency = 20000000ULL;
+unsigned int sysctl_sched_latency = 6000000ULL;
+unsigned int normalized_sysctl_sched_latency = 6000000ULL;
 
 /*
  * The initial- and re-scaling of tunables is configurable
@@ -65,8 +65,8 @@ enum sched_tunable_scaling sysctl_sched_tunable_scaling
  * Minimal preemption granularity for CPU-bound tasks:
  * (default: 0.75 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_min_granularity = 4000000ULL;
-unsigned int normalized_sysctl_sched_min_granularity = 4000000ULL;
+unsigned int sysctl_sched_min_granularity = 750000ULL;
+unsigned int normalized_sysctl_sched_min_granularity = 750000ULL;
 
 /*
  * is kept at sysctl_sched_latency / sysctl_sched_min_granularity
@@ -87,8 +87,8 @@ unsigned int sysctl_sched_child_runs_first __read_mostly;
  * and reduces their over-scheduling. Synchronous workloads will still
  * have immediate wakeup/sleep latencies.
  */
-unsigned int sysctl_sched_wakeup_granularity = 5000000UL;
-unsigned int normalized_sysctl_sched_wakeup_granularity = 5000000UL;
+unsigned int sysctl_sched_wakeup_granularity = 1000000UL;
+unsigned int normalized_sysctl_sched_wakeup_granularity = 1000000UL;
 
 const_debug unsigned int sysctl_sched_migration_cost = 500000UL;
 
@@ -4167,8 +4167,8 @@ static int tg_load_down(struct task_group *tg, void *data)
 		load = cpu_rq(cpu)->load.weight;
 	} else {
 		load = tg->parent->cfs_rq[cpu]->h_load;
-		load = div64_ul(load * tg->se[cpu]->avg.load_avg_contrib,
-				tg->parent->cfs_rq[cpu]->runnable_load_avg + 1);
+		load *= tg->se[cpu]->load.weight;
+		load /= tg->parent->cfs_rq[cpu]->load.weight + 1;
 	}
 
 	tg->cfs_rq[cpu]->h_load = load;
@@ -4954,12 +4954,10 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 				     struct sched_group *group)
 {
 	struct rq *busiest = NULL, *rq;
-	//unsigned long max_load = 0;
-	unsigned long busiest_load = 0, busiest_power = 1;
+	unsigned long max_load = 0;
 	int i;
 
-	//for_each_cpu(i, sched_group_cpus(group)) {
-	for_each_cpu_and(i, sched_group_cpus(group), env->cpus) {
+	for_each_cpu(i, sched_group_cpus(group)) {
 		unsigned long power = power_of(i);
 		unsigned long capacity = DIV_ROUND_CLOSEST(power,
 							   SCHED_POWER_SCALE);
@@ -4968,8 +4966,8 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 		if (!capacity)
 			capacity = fix_small_capacity(env->sd, group);
 
-		//if (!cpumask_test_cpu(i, env->cpus))
-		//	continue;
+		if (!cpumask_test_cpu(i, env->cpus))
+			continue;
 
 		rq = cpu_rq(i);
 		wl = weighted_cpuload(i);
@@ -4987,13 +4985,10 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 		 * the load can be moved away from the cpu that is potentially
 		 * running at a lower capacity.
 		 */
-		//wl = (wl * SCHED_POWER_SCALE) / power;
+		wl = (wl * SCHED_POWER_SCALE) / power;
 
-		//if (wl > max_load) {
-			//max_load = wl;
-		if (wl * busiest_power > busiest_load * power) {
-			busiest_load = wl;
-			busiest_power = power;
+		if (wl > max_load) {
+			max_load = wl;
 			busiest = rq;
 		}
 	}

@@ -159,8 +159,6 @@ static inline int hpage_nr_pages(struct page *page)
 		return HPAGE_PMD_NR;
 	return 1;
 }
-
-
 static inline struct page *compound_trans_head(struct page *page)
 {
 	if (PageTail(page)) {
