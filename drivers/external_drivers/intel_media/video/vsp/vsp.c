@@ -1069,12 +1069,14 @@ int vsp_new_context(struct drm_device *dev, struct file *filp, int ctx_type)
 		return -1;
 	}
 
+	mutex_lock(&vsp_priv->vsp_mutex);
 	if (VAEntrypointEncSlice == ctx_type) {
 		vsp_priv->context_vp8_num++;
 		if (vsp_priv->context_vp8_num > MAX_VP8_CONTEXT_NUM) {
 			DRM_ERROR("VSP: Only support 3 vp8 encoding!\n");
 			/* store the 4th vp8 encoding fd for remove context use */
 			vsp_priv->vp8_filp[3] = filp;
+			mutex_unlock(&vsp_priv->vsp_mutex);
 			return -1;
 		}
 
@@ -1100,6 +1102,7 @@ int vsp_new_context(struct drm_device *dev, struct file *filp, int ctx_type)
 		DRM_ERROR("VSP: couldn't support the context %x\n", ctx_type);
 		ret = -1;
 	}
+	mutex_unlock(&vsp_priv->vsp_mutex);
 
 	VSP_DEBUG("context_vp8_num %d, context_vpp_num %d\n",
 			vsp_priv->context_vp8_num, vsp_priv->context_vpp_num);
@@ -1138,6 +1141,7 @@ void vsp_rm_context(struct drm_device *dev, struct file *filp, int ctx_type)
 		return;
 	}
 
+	mutex_lock(&vsp_priv->vsp_mutex);
 	if (vsp_priv->ctrl == NULL) {
 		for (i = 0; i < MAX_VP8_CONTEXT_NUM + 1; i++) {
 			if (filp == vsp_priv->vp8_filp[i])
@@ -1150,6 +1154,7 @@ void vsp_rm_context(struct drm_device *dev, struct file *filp, int ctx_type)
 		} else if (ctx_type == VAEntrypointVideoProc) {
 			if (vsp_priv->context_vpp_num > 0)
 				vsp_priv->context_vpp_num--;
+			mutex_unlock(&vsp_priv->vsp_mutex);
 		}
 		return;
 	}
@@ -1163,8 +1168,7 @@ void vsp_rm_context(struct drm_device *dev, struct file *filp, int ctx_type)
 	}
 
 	if (VAEntrypointEncSlice == ctx_type && filp != vsp_priv->vp8_filp[3]) {
-		vsp_priv->context_vp8_num--;
-		mutex_lock(&vsp_priv->vsp_mutex);
+		
 		if (vsp_priv->vsp_state == VSP_STATE_SUSPEND) {
 			tmp = vsp_resume_function(dev_priv);
 			VSP_DEBUG("The VSP is on suspend, send resume!\n");
@@ -1207,6 +1211,8 @@ void vsp_rm_context(struct drm_device *dev, struct file *filp, int ctx_type)
 			PSB_UDELAY(6);
 		}
 
+		mutex_lock(&vsp_priv->vsp_mutex);
+		vsp_priv->context_vp8_num--;
 		if (count == 20000) {
 			DRM_ERROR("Failed to handle sigint event\n");
 		}
@@ -1222,10 +1228,12 @@ void vsp_rm_context(struct drm_device *dev, struct file *filp, int ctx_type)
 	if (vsp_priv->context_vp8_num > 0 || vsp_priv->context_vpp_num > 0) {
 		VSP_DEBUG("context_vp8_num %d, context_vpp_num %d\n",
 			vsp_priv->context_vp8_num, vsp_priv->context_vpp_num);
+		mutex_unlock(&vsp_priv->vsp_mutex);
 		return;
 	}
 
 	vsp_priv->ctrl->entry_kind = vsp_exit;
+	mutex_unlock(&vsp_priv->vsp_mutex);
 
 	/* in case of power mode 0, HW always active,
 	 * * in case got no response from FW, vsp_state=hang but could not be powered off,

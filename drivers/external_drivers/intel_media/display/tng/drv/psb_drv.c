@@ -1660,8 +1660,8 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 		pm_reg = 0x3c; //HDMISS
 		power_up(pm_reg,pm_mask);
 
-		pm_reg = 0x39; //ATOMISP
-		power_up(pm_reg,pm_mask);
+		//pm_reg = 0x39; //ATOMISP
+		//power_up(pm_reg,pm_mask);
 
 		pm_reg = 0x3f;
 		pm_mask = intel_mid_msgbus_read32(0x04, pm_reg);
